@@ -7,6 +7,8 @@ import cron from 'node-cron';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
 import { scrapeJobs } from './services/scraper.js';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase.js';
 
 dotenv.config();
 
@@ -32,6 +34,41 @@ async function startServer() {
   // API Routes
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok' });
+  });
+
+  // Dynamic Sitemap for Google Search Console
+  app.get('/sitemap.xml', async (req, res) => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'jobs'));
+      const jobs = querySnapshot.docs.map(doc => doc.data());
+      
+      // Get the base URL from environment or use a default (replace with your actual domain later)
+      const baseUrl = process.env.APP_URL || 'https://syrian-jobs.com'; 
+
+      let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+      xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+      
+      // Add static pages
+      const staticPages = ['', '/saved', '/contact'];
+      staticPages.forEach(page => {
+        xml += `  <url>\n    <loc>${baseUrl}${page}</loc>\n    <changefreq>daily</changefreq>\n    <priority>${page === '' ? '1.0' : '0.8'}</priority>\n  </url>\n`;
+      });
+
+      // Add dynamic job pages
+      jobs.forEach(job => {
+        if (job.slug) {
+          xml += `  <url>\n    <loc>${baseUrl}/job/${job.slug}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>0.9</priority>\n  </url>\n`;
+        }
+      });
+
+      xml += '</urlset>';
+
+      res.header('Content-Type', 'application/xml');
+      res.send(xml);
+    } catch (error) {
+      console.error('Error generating sitemap:', error);
+      res.status(500).end();
+    }
   });
 
   app.post('/api/scrape', async (req, res) => {
