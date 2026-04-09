@@ -6,7 +6,7 @@ import path from 'path';
 import cron from 'node-cron';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
-import { scrapeJobs } from './src/services/scraper.js';
+import { scrapeJobs } from './services/scraper.js';
 
 dotenv.config();
 
