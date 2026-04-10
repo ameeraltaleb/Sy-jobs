@@ -89,6 +89,72 @@ async function scrapeTanqeeb() {
   return jobs;
 }
 
+async function scrapeRemoteTanqeeb() {
+  console.log('Scraping Tanqeeb for Remote Jobs...');
+  const jobs: any[] = [];
+  try {
+    // Search for "عن بعد" (Remote) across the Arab world
+    const response = await axios.get('https://www.tanqeeb.com/ar/jobs/search?keywords=%D8%B9%D9%86+%D8%A8%D8%B9%D8%AF', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    });
+    
+    const $ = cheerio.load(response.data);
+    
+    $('a[href*="/job/"]').each((i, el) => {
+      if (jobs.length >= 10) return; // Limit to 10
+      
+      const link = $(el).attr('href');
+      const title = $(el).text().replace(/\s+/g, ' ').trim();
+      
+      if (title && link && title.length > 5 && !title.includes('وظائف') && !title.includes('بحث')) {
+        jobs.push({
+          title,
+          sourceUrl: link.startsWith('http') ? link : `https://www.tanqeeb.com${link}`,
+          company: 'شركة خاصة',
+          location: 'عن بعد'
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error scraping Remote Tanqeeb:', error);
+  }
+  return jobs;
+}
+
+async function scrapeRemotive() {
+  console.log('Scraping Remotive for Worldwide Remote Jobs...');
+  const jobs: any[] = [];
+  try {
+    // Fetch remote jobs globally
+    const response = await axios.get('https://remotive.com/api/remote-jobs?limit=50');
+    
+    if (response.data && response.data.jobs) {
+      // Filter for jobs that explicitly allow "Worldwide", "Anywhere", or "Global" candidates
+      const worldwideJobs = response.data.jobs.filter((job: any) => {
+        const loc = (job.candidate_required_location || '').toLowerCase();
+        return loc.includes('worldwide') || loc.includes('anywhere') || loc.includes('global');
+      }).slice(0, 10); // Limit to 10 to avoid Gemini quota issues
+      
+      worldwideJobs.forEach((item: any) => {
+        if (item.title && item.url) {
+          jobs.push({
+            title: item.title,
+            sourceUrl: item.url,
+            company: item.company_name || 'شركة عالمية',
+            location: 'عن بعد',
+            description: item.description // We will pass this to Gemini for translation
+          });
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error scraping Remotive:', error);
+  }
+  return jobs;
+}
+
 export async function scrapeJobs() {
   console.log('Starting job processing pipeline...');
   let addedCount = 0;
@@ -96,21 +162,29 @@ export async function scrapeJobs() {
 
   try {
     // 1. Get jobs from all sources concurrently
-    const [unJobsResult, tanqeebResult] = await Promise.allSettled([
+    const [unJobsResult, tanqeebResult, remoteTanqeebResult, remotiveResult] = await Promise.allSettled([
       scrapeUNJobs(),
-      scrapeTanqeeb()
+      scrapeTanqeeb(),
+      scrapeRemoteTanqeeb(),
+      scrapeRemotive()
     ]);
 
     const unJobs = unJobsResult.status === 'fulfilled' ? unJobsResult.value : [];
     const tanqeebJobs = tanqeebResult.status === 'fulfilled' ? tanqeebResult.value : [];
+    const remoteJobs = remoteTanqeebResult.status === 'fulfilled' ? remoteTanqeebResult.value : [];
+    const remotiveJobs = remotiveResult.status === 'fulfilled' ? remotiveResult.value : [];
 
     console.log(`Found ${unJobs.length} jobs on UNJobs.`);
     console.log(`Found ${tanqeebJobs.length} jobs on Tanqeeb.`);
+    console.log(`Found ${remoteJobs.length} remote jobs.`);
+    console.log(`Found ${remotiveJobs.length} jobs on Remotive.`);
 
     // Combine all sources
     const allSources = [
       ...unJobs.map(j => ({ ...j, type: 'external' })),
-      ...tanqeebJobs.map(j => ({ ...j, type: 'external' }))
+      ...tanqeebJobs.map(j => ({ ...j, type: 'external' })),
+      ...remoteJobs.map(j => ({ ...j, type: 'external' })),
+      ...remotiveJobs.map(j => ({ ...j, type: 'external' }))
     ];
 
     let globalQuotaExceeded = false;
@@ -140,13 +214,16 @@ export async function scrapeJobs() {
         // Add delay for Gemini API limits
         await new Promise(resolve => setTimeout(resolve, 2000));
 
+        const cleanDescription = source.description ? source.description.replace(/<[^>]*>?/gm, '').substring(0, 1000) : '';
+
         // For UNJobs, we use Gemini to generate a better Arabic description based on the title and company
         const prompt = `
-          لديك وظيفة بالعنوان التالي: "${source.title}" في منظمة "${source.company}".
+          لديك وظيفة بالعنوان التالي: "${source.title}" في منظمة/شركة "${source.company}".
+          ${cleanDescription ? `تفاصيل الوظيفة الأصلية:\n${cleanDescription}\n\n` : ''}
           المطلوب منك:
           1. ترجمة المسمى الوظيفي إلى لغة عربية احترافية معتمدة في الموارد البشرية.
           2. تعريب اسم المنظمة/الشركة (مثلاً إضافة الاسم بالعربي بجانب الانجليزي).
-          3. توليد وصف وظيفي احترافي ومفصل جداً باللغة العربية يتناسب مع هذا المسمى الوظيفي في سياق العمل الإنساني في سوريا.
+          3. توليد وصف وظيفي احترافي ومفصل جداً باللغة العربية يتناسب مع هذا المسمى الوظيفي في سياق العمل الإنساني أو عن بعد في سوريا. اعتمد على "تفاصيل الوظيفة الأصلية" إن وجدت لترجمتها وتلخيصها.
           
           يجب أن يكون حقل "description" منسقاً باستخدام Markdown (بدون استخدام backticks حول النص).
           يجب أن يحتوي الوصف على الأقسام التالية بشكل جذاب:
@@ -159,8 +236,8 @@ export async function scrapeJobs() {
           {
             "title": "المسمى الوظيفي المترجم للغة العربية",
             "company": "اسم المنظمة المعرب (مثال: منظمة الصحة العالمية - WHO)",
-            "location": "سوريا",
-            "type": "دوام كامل",
+            "location": "${source.location === 'عن بعد' ? 'عن بعد' : 'سوريا'}",
+            "type": "${source.location === 'عن بعد' ? 'عن بعد' : 'دوام كامل'}",
             "description": "الوصف الوظيفي المنسق بصيغة Markdown هنا...",
             "tags": ["منظمات", "سوريا", "اسم المنظمة"],
             "experienceLevel": "استنتج مستوى الخبرة من العنوان (مثلاً: مبتدئ، متوسط، خبير، إداري). إذا لم تكن متأكداً اكتب 'غير محدد'",
