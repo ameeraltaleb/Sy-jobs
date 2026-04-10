@@ -7,6 +7,7 @@ import { MapPin, Clock, Building, ChevronLeft, Search as SearchIcon, Filter, X }
 import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { CATEGORIES_DATA } from './Categories';
+import NativeAd from '../components/NativeAd';
 
 interface Job {
   id: string;
@@ -260,53 +261,57 @@ export default function Home() {
             </div>
           ) : currentJobs.length > 0 ? (
             <div className="space-y-4">
-              {currentJobs.map(job => (
-                <Link 
-                  key={job.id} 
-                  to={`/job/${job.slug}`}
-                  className="block bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-100 transition-all group"
-                >
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors mb-2">
-                        {job.title}
-                      </h3>
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <Building className="w-4 h-4" />
-                          {job.company}
+              {currentJobs.map((job, index) => (
+                <React.Fragment key={job.id}>
+                  <Link 
+                    to={`/job/${job.slug}`}
+                    className="block bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-100 transition-all group"
+                  >
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors mb-2">
+                          {job.title}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Building className="w-4 h-4" />
+                            {job.company}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-4 h-4" />
+                            {job.location}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-4 h-4" />
+                            {job.datePosted ? formatDistanceToNow(new Date(job.datePosted), { addSuffix: true, locale: ar }) : 'مؤخراً'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 w-full sm:w-auto">
+                        <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap">
+                          {job.type}
                         </span>
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          {job.location}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          {job.datePosted ? formatDistanceToNow(new Date(job.datePosted), { addSuffix: true, locale: ar }) : 'مؤخراً'}
-                        </span>
+                        <ChevronLeft className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors hidden sm:block" />
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-3 w-full sm:w-auto">
-                      <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap">
-                        {job.type}
-                      </span>
-                      <ChevronLeft className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors hidden sm:block" />
+                    <p className="mt-4 text-gray-600 line-clamp-2 text-sm leading-relaxed">
+                      {job.description}
+                    </p>
+                    
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {job.tags?.map(tag => (
+                        <span key={tag} className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
+                          {tag}
+                        </span>
+                      ))}
                     </div>
-                  </div>
+                  </Link>
                   
-                  <p className="mt-4 text-gray-600 line-clamp-2 text-sm leading-relaxed">
-                    {job.description}
-                  </p>
-                  
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {job.tags?.map(tag => (
-                      <span key={tag} className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </Link>
+                  {/* Inject Native Ad after every 5 jobs */}
+                  {(index + 1) % 5 === 0 && <NativeAd />}
+                </React.Fragment>
               ))}
             </div>
           ) : (

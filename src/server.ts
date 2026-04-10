@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import cron from 'node-cron';
@@ -25,6 +26,7 @@ async function startServer() {
   const PORT = 3000;
 
   // Middleware
+  app.use(compression()); // Compress responses for better performance
   app.use(cors());
   app.use(helmet({
     contentSecurityPolicy: false, // Disabled for development/vite
@@ -150,7 +152,11 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    // Serve static files with aggressive caching (1 year) for better PageSpeed scores
+    app.use(express.static(distPath, {
+      maxAge: '1y',
+      etag: true,
+    }));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
