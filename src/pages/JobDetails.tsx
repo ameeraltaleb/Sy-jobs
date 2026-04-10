@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { MapPin, Clock, Building, Share2, Bookmark, ArrowRight, Calendar } from 'lucide-react';
+import { MapPin, Clock, Building, Share2, Bookmark, ArrowRight, Calendar, Briefcase, Star, CheckCircle2 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ar } from 'date-fns/locale';
+import Markdown from 'react-markdown';
 
 interface Job {
   id: string;
@@ -18,13 +19,18 @@ interface Job {
   datePosted: string;
   sourceUrl: string;
   tags: string[];
+  experienceLevel?: string;
+  deadline?: string;
+  skills?: string[];
 }
 
 export default function JobDetails() {
   const { slug } = useParams<{ slug: string }>();
   const [job, setJob] = useState<Job | null>(null);
+  const [relatedJobs, setRelatedJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
+  const [shareText, setShareText] = useState('');
 
   useEffect(() => {
     const savedJobs = JSON.parse(localStorage.getItem('savedJobs') || '[]');
@@ -39,7 +45,18 @@ export default function JobDetails() {
         
         if (!querySnapshot.empty) {
           const doc = querySnapshot.docs[0];
-          setJob({ id: doc.id, ...doc.data() } as Job);
+          const jobData = { id: doc.id, ...doc.data() } as Job;
+          setJob(jobData);
+
+          // Fetch related jobs (just recent ones for now, excluding current)
+          const relatedQ = query(collection(db, 'jobs'), orderBy('datePosted', 'desc'), limit(4));
+          const relatedSnap = await getDocs(relatedQ);
+          const rJobs = relatedSnap.docs
+            .map(d => ({ id: d.id, ...d.data() } as Job))
+            .filter(j => j.id !== doc.id)
+            .slice(0, 3);
+          setRelatedJobs(rJobs);
+
         } else {
           setJob(null);
         }
@@ -63,6 +80,26 @@ export default function JobDetails() {
     }
     localStorage.setItem('savedJobs', JSON.stringify(newSavedJobs));
     setIsSaved(!isSaved);
+  };
+
+  const handleShare = async () => {
+    const shareData = {
+      title: `${job?.title} - ${job?.company}`,
+      text: `شاهد هذه الوظيفة: ${job?.title} في ${job?.company} عبر منصة فرص عمل سوريا`,
+      url: window.location.href,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.log('Error sharing:', err);
+      }
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      setShareText('تم النسخ!');
+      setTimeout(() => setShareText(''), 2000);
+    }
   };
 
   if (loading) {
@@ -126,21 +163,27 @@ export default function JobDetails() {
         {/* Job Header */}
         <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 mb-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-3">{job.title}</h1>
-              <div className="flex flex-wrap items-center gap-4 text-gray-600">
-                <span className="flex items-center gap-1.5 font-medium text-gray-900">
-                  <Building className="w-5 h-5 text-gray-400" />
-                  {job.company}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="w-5 h-5 text-gray-400" />
-                  {job.location}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Clock className="w-5 h-5 text-gray-400" />
-                  {job.datePosted ? formatDistanceToNow(new Date(job.datePosted), { addSuffix: true, locale: ar }) : 'مؤخراً'}
-                </span>
+            <div className="flex items-start gap-4">
+              {/* Company Logo Placeholder */}
+              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 flex items-center justify-center flex-shrink-0 text-blue-600 font-bold text-2xl shadow-sm">
+                {job.company.charAt(0)}
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-3">{job.title}</h1>
+                <div className="flex flex-wrap items-center gap-4 text-gray-600">
+                  <span className="flex items-center gap-1.5 font-medium text-gray-900">
+                    <Building className="w-5 h-5 text-gray-400" />
+                    {job.company}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <MapPin className="w-5 h-5 text-gray-400" />
+                    {job.location}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="w-5 h-5 text-gray-400" />
+                    {job.datePosted ? formatDistanceToNow(new Date(job.datePosted), { addSuffix: true, locale: ar }) : 'مؤخراً'}
+                  </span>
+                </div>
               </div>
             </div>
             
@@ -156,9 +199,20 @@ export default function JobDetails() {
               >
                 <Bookmark className={`w-5 h-5 ${isSaved ? 'fill-current' : ''}`} />
               </button>
-              <button className="p-3 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors border border-gray-200">
-                <Share2 className="w-5 h-5" />
-              </button>
+              <div className="relative">
+                <button 
+                  onClick={handleShare}
+                  className="p-3 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors border border-gray-200"
+                  title="مشاركة الوظيفة"
+                >
+                  <Share2 className="w-5 h-5" />
+                </button>
+                {shareText && (
+                  <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs py-1 px-2 rounded whitespace-nowrap">
+                    {shareText}
+                  </span>
+                )}
+              </div>
               <a 
                 href={job.sourceUrl} 
                 target="_blank" 
@@ -170,16 +224,38 @@ export default function JobDetails() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3 pt-6 border-t border-gray-100">
-            <div className="bg-gray-50 px-4 py-2 rounded-lg text-sm text-gray-700 flex items-center gap-2">
-              <span className="font-medium">نوع العمل:</span> {job.type}
-            </div>
-            {job.datePosted && (
-              <div className="bg-gray-50 px-4 py-2 rounded-lg text-sm text-gray-700 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-400" />
-                <span className="font-medium">تاريخ النشر:</span> {format(new Date(job.datePosted), 'dd MMMM yyyy', { locale: ar })}
+          {/* Quick Facts */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-gray-100">
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+              <div className="flex items-center gap-2 text-gray-500 mb-1">
+                <Briefcase className="w-4 h-4" />
+                <span className="text-sm">نوع العمل</span>
               </div>
-            )}
+              <p className="font-semibold text-gray-900">{job.type}</p>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+              <div className="flex items-center gap-2 text-gray-500 mb-1">
+                <Star className="w-4 h-4" />
+                <span className="text-sm">مستوى الخبرة</span>
+              </div>
+              <p className="font-semibold text-gray-900">{job.experienceLevel || 'غير محدد'}</p>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+              <div className="flex items-center gap-2 text-gray-500 mb-1">
+                <Calendar className="w-4 h-4" />
+                <span className="text-sm">تاريخ النشر</span>
+              </div>
+              <p className="font-semibold text-gray-900">
+                {job.datePosted ? format(new Date(job.datePosted), 'dd MMM yyyy', { locale: ar }) : 'مؤخراً'}
+              </p>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+              <div className="flex items-center gap-2 text-gray-500 mb-1">
+                <Clock className="w-4 h-4" />
+                <span className="text-sm">الموعد النهائي</span>
+              </div>
+              <p className="font-semibold text-gray-900">{job.deadline || 'غير محدد'}</p>
+            </div>
           </div>
         </div>
 
@@ -191,9 +267,23 @@ export default function JobDetails() {
         {/* Job Description */}
         <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-6">وصف الوظيفة</h2>
-          <div className="prose prose-blue max-w-none text-gray-600 leading-relaxed whitespace-pre-wrap">
-            {job.description}
+          <div className="prose prose-blue prose-lg max-w-none text-gray-600 leading-relaxed">
+            <Markdown>{job.description}</Markdown>
           </div>
+
+          {job.skills && job.skills.length > 0 && (
+            <div className="mt-8 pt-8 border-t border-gray-100">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">المهارات المطلوبة</h3>
+              <div className="flex flex-wrap gap-2">
+                {job.skills.map(skill => (
+                  <span key={skill} className="bg-blue-50 text-blue-700 border border-blue-100 px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4" />
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {job.tags && job.tags.length > 0 && (
             <div className="mt-8 pt-8 border-t border-gray-100">
@@ -216,6 +306,36 @@ export default function JobDetails() {
             موقع "فرص عمل سوريا" هو محرك بحث للوظائف ولا يمثل الشركات المعلنة. يرجى الحذر وعدم دفع أي مبالغ مالية لأي جهة تطلب رسوماً مقابل التوظيف.
           </p>
         </div>
+
+        {/* Related Jobs */}
+        {relatedJobs.length > 0 && (
+          <div className="mt-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">وظائف قد تهمك</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {relatedJobs.map(rJob => (
+                <Link 
+                  key={rJob.id} 
+                  to={`/job/${rJob.slug}`}
+                  className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-100 transition-all group"
+                >
+                  <h3 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors mb-2 line-clamp-1">{rJob.title}</h3>
+                  <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+                    <Building className="w-4 h-4" />
+                    <span className="line-clamp-1">{rJob.company}</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-50">
+                    <span className="text-xs text-gray-400 flex items-center gap-1">
+                      <MapPin className="w-3 h-3" /> {rJob.location}
+                    </span>
+                    <span className="text-blue-600 text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
+                      التفاصيل <ArrowRight className="w-4 h-4" />
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

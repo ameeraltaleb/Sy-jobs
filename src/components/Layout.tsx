@@ -37,8 +37,14 @@ export default function Layout() {
               </Link>
             </div>
 
-            {/* Mobile menu button */}
-            <div className="flex items-center md:hidden">
+            {/* Mobile menu button & icons */}
+            <div className="flex items-center gap-2 md:hidden">
+              <button className="p-2 text-gray-400 hover:text-blue-600 transition-colors">
+                <Search className="h-5 w-5" />
+              </button>
+              <button className="p-2 text-gray-400 hover:text-blue-600 transition-colors">
+                <Bell className="h-5 w-5" />
+              </button>
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="p-2 text-gray-400 hover:text-gray-500"

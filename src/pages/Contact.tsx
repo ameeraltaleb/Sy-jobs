@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet-async';
-import { Mail, MapPin, Phone } from 'lucide-react';
+import { Globe, MapPin, Phone } from 'lucide-react';
 import { useState } from 'react';
 
 export default function Contact() {
@@ -117,11 +117,11 @@ export default function Contact() {
               <div className="space-y-4">
                 <div className="flex items-start gap-4">
                   <div className="bg-blue-50 p-3 rounded-full text-blue-600">
-                    <Mail className="w-6 h-6" />
+                    <Globe className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-gray-900">البريد الإلكتروني</h3>
-                    <p className="text-gray-600 mt-1">info@syriajobs.example.com</p>
+                    <h3 className="font-medium text-gray-900">الموقع الإلكتروني</h3>
+                    <p className="text-gray-600 mt-1">syrian-jobs.com</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">

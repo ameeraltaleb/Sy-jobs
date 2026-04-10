@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { Link, useSearchParams } from 'react-router-dom';
 import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { MapPin, Clock, Building, ChevronLeft, Search as SearchIcon } from 'lucide-react';
+import { MapPin, Clock, Building, ChevronLeft, Search as SearchIcon, Filter, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { CATEGORIES_DATA } from './Categories';
@@ -34,6 +34,7 @@ export default function Home() {
   const selectedCategory = searchParams.get('category') || '';
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(selectedCategory ? [selectedCategory] : []);
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
 
   // Local state for search input to avoid URL updates on every keystroke
   const [localSearchTerm, setLocalSearchTerm] = useState(urlSearchTerm);
@@ -116,6 +117,48 @@ export default function Home() {
   const totalPages = Math.ceil(jobs.length / JOBS_PER_PAGE);
   const currentJobs = jobs.slice((currentPage - 1) * JOBS_PER_PAGE, currentPage * JOBS_PER_PAGE);
 
+  const filterContent = (
+    <>
+      <div className="mb-6">
+        <h3 className="font-medium text-gray-900 mb-3">نوع العمل</h3>
+        <div className="space-y-2">
+          {['دوام كامل', 'دوام جزئي', 'عن بعد', 'تدريب', 'عمل حر'].map(type => (
+            <label key={type} className="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                checked={selectedTypes.includes(type)}
+                onChange={() => handleTypeChange(type)}
+              />
+              <span className="text-gray-600">{type}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-medium text-gray-900 mb-3">المجال</h3>
+        <div className="space-y-2">
+          {CATEGORIES_DATA.map(category => (
+            <label key={category.id} className="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                checked={selectedCategories.includes(category.id)}
+                onChange={() => {
+                  setSelectedCategories(prev => 
+                    prev.includes(category.id) ? prev.filter(c => c !== category.id) : [...prev, category.id]
+                  );
+                }}
+              />
+              <span className="text-gray-600">{category.name}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <>
       <Helmet>
@@ -152,9 +195,19 @@ export default function Home() {
           >
             <option value="">كل المدن</option>
             <option value="دمشق">دمشق</option>
+            <option value="ريف دمشق">ريف دمشق</option>
             <option value="حلب">حلب</option>
-            <option value="اللاذقية">اللاذقية</option>
             <option value="حمص">حمص</option>
+            <option value="حماة">حماة</option>
+            <option value="اللاذقية">اللاذقية</option>
+            <option value="طرطوس">طرطوس</option>
+            <option value="إدلب">إدلب</option>
+            <option value="درعا">درعا</option>
+            <option value="السويداء">السويداء</option>
+            <option value="القنيطرة">القنيطرة</option>
+            <option value="دير الزور">دير الزور</option>
+            <option value="الرقة">الرقة</option>
+            <option value="الحسكة">الحسكة</option>
             <option value="عن بعد">عن بعد</option>
           </select>
           <button type="submit" className="bg-blue-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors">
@@ -173,52 +226,26 @@ export default function Home() {
         <aside className="hidden lg:block col-span-1">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sticky top-24">
             <h2 className="text-lg font-bold text-gray-900 mb-6">تصفية النتائج</h2>
-            
-            <div className="mb-6">
-              <h3 className="font-medium text-gray-900 mb-3">نوع العمل</h3>
-              <div className="space-y-2">
-                {['دوام كامل', 'دوام جزئي', 'عن بعد', 'تدريب', 'عمل حر'].map(type => (
-                  <label key={type} className="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
-                      checked={selectedTypes.includes(type)}
-                      onChange={() => handleTypeChange(type)}
-                    />
-                    <span className="text-gray-600">{type}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-medium text-gray-900 mb-3">المجال</h3>
-              <div className="space-y-2">
-                {CATEGORIES_DATA.map(category => (
-                  <label key={category.id} className="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
-                      checked={selectedCategories.includes(category.id)}
-                      onChange={() => {
-                        setSelectedCategories(prev => 
-                          prev.includes(category.id) ? prev.filter(c => c !== category.id) : [...prev, category.id]
-                        );
-                      }}
-                    />
-                    <span className="text-gray-600">{category.name}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+            {filterContent}
           </div>
         </aside>
 
         {/* Job Listings */}
         <div className="col-span-1 lg:col-span-3">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">أحدث الوظائف</h2>
-            <span className="text-gray-500 text-sm">عرض {jobs.length} وظيفة</span>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">أحدث الوظائف</h2>
+              <span className="text-gray-500 text-sm">عرض {jobs.length} وظيفة</span>
+            </div>
+            
+            {/* Mobile Filter Button */}
+            <button 
+              onClick={() => setIsMobileFiltersOpen(true)}
+              className="lg:hidden flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-lg text-gray-700 font-medium hover:bg-gray-50 w-full sm:w-auto justify-center"
+            >
+              <Filter className="w-5 h-5" />
+              تصفية النتائج
+            </button>
           </div>
 
           {loading ? (
@@ -335,6 +362,30 @@ export default function Home() {
           )}
         </div>
       </div>
+
+      {/* Mobile Filters Modal */}
+      {isMobileFiltersOpen && (
+        <div className="fixed inset-0 z-50 flex lg:hidden" dir="rtl">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setIsMobileFiltersOpen(false)}></div>
+          <div className="relative w-full max-w-xs bg-white h-full overflow-y-auto p-6 shadow-xl ml-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold text-gray-900">تصفية النتائج</h2>
+              <button onClick={() => setIsMobileFiltersOpen(false)} className="text-gray-500 hover:text-gray-700">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            {filterContent}
+            
+            <button 
+              onClick={() => setIsMobileFiltersOpen(false)}
+              className="w-full mt-8 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            >
+              عرض النتائج
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

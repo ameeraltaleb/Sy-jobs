@@ -33,9 +33,9 @@ async function scrapeUNJobs() {
     
     const $ = cheerio.load(response.data);
     $('.job').each((i, el) => {
+      if (jobs.length >= 10) return; // Limit to 10 to avoid quota issues
       const title = $(el).find('a.jtitle').text().trim();
       const link = $(el).find('a.jtitle').attr('href');
-      // Fix company parsing: it's usually the first text node after the first <br>
       const companyNode = $(el).find('br').first()[0]?.nextSibling;
       const company = companyNode && 'data' in companyNode ? (companyNode as any).data.trim() : 'UN/NGO';
       
@@ -54,19 +54,63 @@ async function scrapeUNJobs() {
   return jobs;
 }
 
+async function scrapeTanqeeb() {
+  console.log('Scraping Tanqeeb for Syria...');
+  const jobs: any[] = [];
+  try {
+    const response = await axios.get('https://syria.tanqeeb.com/ar/jobs/search', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    });
+    
+    const $ = cheerio.load(response.data);
+    
+    // Find job links in Tanqeeb
+    $('a[href*="/job/"]').each((i, el) => {
+      if (jobs.length >= 10) return; // Limit to 10
+      
+      const link = $(el).attr('href');
+      const title = $(el).text().replace(/\s+/g, ' ').trim();
+      
+      // Filter out generic links and empty titles
+      if (title && link && title.length > 5 && !title.includes('وظائف') && !title.includes('بحث')) {
+        jobs.push({
+          title,
+          sourceUrl: link.startsWith('http') ? link : `https://syria.tanqeeb.com${link}`,
+          company: 'شركة خاصة', // Fallback, Gemini will try to extract real company from title/description
+          location: 'سوريا'
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error scraping Tanqeeb:', error);
+  }
+  return jobs;
+}
+
 export async function scrapeJobs() {
   console.log('Starting job processing pipeline...');
   let addedCount = 0;
   const jobsRef = collection(db, 'jobs');
 
   try {
-    // 1. Get jobs from UNJobs (Real Scraping)
-    const unJobs = await scrapeUNJobs();
+    // 1. Get jobs from all sources concurrently
+    const [unJobsResult, tanqeebResult] = await Promise.allSettled([
+      scrapeUNJobs(),
+      scrapeTanqeeb()
+    ]);
+
+    const unJobs = unJobsResult.status === 'fulfilled' ? unJobsResult.value : [];
+    const tanqeebJobs = tanqeebResult.status === 'fulfilled' ? tanqeebResult.value : [];
+
     console.log(`Found ${unJobs.length} jobs on UNJobs.`);
+    console.log(`Found ${tanqeebJobs.length} jobs on Tanqeeb.`);
 
     // Combine all sources
     const allSources = [
-      ...unJobs.map(j => ({ ...j, type: 'external' }))
+      ...unJobs.map(j => ({ ...j, type: 'external' })),
+      ...tanqeebJobs.map(j => ({ ...j, type: 'external' }))
     ];
 
     let globalQuotaExceeded = false;
@@ -99,15 +143,29 @@ export async function scrapeJobs() {
         // For UNJobs, we use Gemini to generate a better Arabic description based on the title and company
         const prompt = `
           لديك وظيفة بالعنوان التالي: "${source.title}" في منظمة "${source.company}".
-          قم بتوليد وصف وظيفي احترافي باللغة العربية (SEO Friendly) يتناسب مع هذا المسمى الوظيفي في سياق العمل الإنساني في سوريا.
+          المطلوب منك:
+          1. ترجمة المسمى الوظيفي إلى لغة عربية احترافية معتمدة في الموارد البشرية.
+          2. تعريب اسم المنظمة/الشركة (مثلاً إضافة الاسم بالعربي بجانب الانجليزي).
+          3. توليد وصف وظيفي احترافي ومفصل جداً باللغة العربية يتناسب مع هذا المسمى الوظيفي في سياق العمل الإنساني في سوريا.
+          
+          يجب أن يكون حقل "description" منسقاً باستخدام Markdown (بدون استخدام backticks حول النص).
+          يجب أن يحتوي الوصف على الأقسام التالية بشكل جذاب:
+          - **نبذة عن الوظيفة** (فقرة قصيرة جذابة)
+          - **المهام والمسؤوليات** (قائمة نقطية Bullet points)
+          - **الشروط والمتطلبات** (قائمة نقطية Bullet points)
+          - **ميزات العمل** (إن أمكن، قائمة نقطية)
+          
           أعد النتيجة بصيغة JSON فقط:
           {
-            "title": "${source.title}",
-            "company": "${source.company}",
+            "title": "المسمى الوظيفي المترجم للغة العربية",
+            "company": "اسم المنظمة المعرب (مثال: منظمة الصحة العالمية - WHO)",
             "location": "سوريا",
             "type": "دوام كامل",
-            "description": "وصف وظيفي مفصل واحترافي...",
-            "tags": ["منظمات", "سوريا", "${source.company}"]
+            "description": "الوصف الوظيفي المنسق بصيغة Markdown هنا...",
+            "tags": ["منظمات", "سوريا", "اسم المنظمة"],
+            "experienceLevel": "استنتج مستوى الخبرة من العنوان (مثلاً: مبتدئ، متوسط، خبير، إداري). إذا لم تكن متأكداً اكتب 'غير محدد'",
+            "deadline": "غير محدد",
+            "skills": ["استنتج 3 إلى 6 مهارات مطلوبة لهذه الوظيفة بناءً على العنوان"]
           }
         `;
 
