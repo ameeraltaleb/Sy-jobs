@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useSearchParams } from 'react-router-dom';
-import { collection, query, orderBy, getDocs, limit } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { MapPin, Clock, Building, ChevronLeft, Search as SearchIcon } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
+import { CATEGORIES_DATA } from './Categories';
 
 interface Job {
   id: string;
@@ -38,66 +39,53 @@ export default function Home() {
   const [localSearchTerm, setLocalSearchTerm] = useState(urlSearchTerm);
 
   useEffect(() => {
-    async function fetchJobs() {
-      setLoading(true);
-      try {
-        let q = query(collection(db, 'jobs'), orderBy('datePosted', 'desc'), limit(100));
-        const querySnapshot = await getDocs(q);
-        let fetchedJobs = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Job[];
+    setLoading(true);
+    const q = query(collection(db, 'jobs'), orderBy('datePosted', 'desc'), limit(100));
+    
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      let fetchedJobs = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Job[];
 
-        // Apply filters client-side
-        if (urlSearchTerm) {
-          const lowerSearch = urlSearchTerm.toLowerCase();
-          fetchedJobs = fetchedJobs.filter(job => 
-            job.title.toLowerCase().includes(lowerSearch) || 
-            job.company.toLowerCase().includes(lowerSearch) ||
-            job.description.toLowerCase().includes(lowerSearch)
-          );
-        }
-
-        if (selectedLocation) {
-          fetchedJobs = fetchedJobs.filter(job => job.location.includes(selectedLocation));
-        }
-
-        if (selectedTypes.length > 0) {
-          fetchedJobs = fetchedJobs.filter(job => selectedTypes.includes(job.type));
-        }
-
-        if (selectedCategories.length > 0) {
-          const categoryMap: Record<string, string> = {
-            'programming': 'برمجة',
-            'design': 'تصميم',
-            'marketing': 'تسويق',
-            'management': 'إدارة',
-            'medical': 'طب',
-            'accounting': 'محاسبة',
-            'engineering': 'هندسة',
-            'education': 'تعليم'
-          };
-          
-          fetchedJobs = fetchedJobs.filter(job => {
-            return selectedCategories.some(catId => {
-              const categoryName = categoryMap[catId] || catId;
-              return job.title.includes(categoryName) || 
-                     job.description.includes(categoryName) ||
-                     job.tags?.some(tag => tag.includes(categoryName));
-            });
-          });
-        }
-
-        setJobs(fetchedJobs);
-        setCurrentPage(1); // Reset to first page when filters change
-      } catch (error) {
-        console.error("Error fetching jobs:", error);
-      } finally {
-        setLoading(false);
+      // Apply filters client-side
+      if (urlSearchTerm) {
+        const lowerSearch = urlSearchTerm.toLowerCase();
+        fetchedJobs = fetchedJobs.filter(job => 
+          job.title.toLowerCase().includes(lowerSearch) || 
+          job.company.toLowerCase().includes(lowerSearch) ||
+          job.description.toLowerCase().includes(lowerSearch)
+        );
       }
-    }
 
-    fetchJobs();
+      if (selectedLocation) {
+        fetchedJobs = fetchedJobs.filter(job => job.location.includes(selectedLocation));
+      }
+
+      if (selectedTypes.length > 0) {
+        fetchedJobs = fetchedJobs.filter(job => selectedTypes.includes(job.type));
+      }
+
+      if (selectedCategories.length > 0) {
+        fetchedJobs = fetchedJobs.filter(job => {
+          const searchableText = `${job.title || ''} ${job.description || ''} ${(job.tags || []).join(' ')}`.toLowerCase();
+          return selectedCategories.some(catId => {
+            const category = CATEGORIES_DATA.find(c => c.id === catId);
+            if (!category) return false;
+            return category.keywords.some(keyword => searchableText.includes(keyword.toLowerCase()));
+          });
+        });
+      }
+
+      setJobs(fetchedJobs);
+      setCurrentPage(1); // Reset to first page when filters change
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching jobs:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [urlSearchTerm, selectedLocation, selectedTypes, selectedCategories]);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -206,16 +194,7 @@ export default function Home() {
             <div>
               <h3 className="font-medium text-gray-900 mb-3">المجال</h3>
               <div className="space-y-2">
-                {[
-                  { id: 'programming', label: 'برمجة وتطوير' },
-                  { id: 'design', label: 'تصميم جرافيك' },
-                  { id: 'marketing', label: 'تسويق ومبيعات' },
-                  { id: 'management', label: 'إدارة أعمال' },
-                  { id: 'engineering', label: 'هندسة' },
-                  { id: 'medical', label: 'طب وصحة' },
-                  { id: 'accounting', label: 'محاسبة ومالية' },
-                  { id: 'education', label: 'تعليم وتدريب' }
-                ].map(category => (
+                {CATEGORIES_DATA.map(category => (
                   <label key={category.id} className="flex items-center gap-2 cursor-pointer">
                     <input 
                       type="checkbox" 
@@ -227,7 +206,7 @@ export default function Home() {
                         );
                       }}
                     />
-                    <span className="text-gray-600">{category.label}</span>
+                    <span className="text-gray-600">{category.name}</span>
                   </label>
                 ))}
               </div>

@@ -1,19 +1,63 @@
+import React, { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { Code, PenTool, Megaphone, Briefcase, Stethoscope, Calculator, Wrench, GraduationCap } from 'lucide-react';
+import { Code, PenTool, Megaphone, Briefcase, Stethoscope, Calculator, Wrench, GraduationCap, Globe, FileText } from 'lucide-react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../../firebase';
 
-const categories = [
-  { id: 'programming', name: 'برمجة وتطوير', icon: Code, count: 120 },
-  { id: 'design', name: 'تصميم جرافيك', icon: PenTool, count: 85 },
-  { id: 'marketing', name: 'تسويق ومبيعات', icon: Megaphone, count: 150 },
-  { id: 'management', name: 'إدارة أعمال', icon: Briefcase, count: 60 },
-  { id: 'medical', name: 'طب وصحة', icon: Stethoscope, count: 45 },
-  { id: 'accounting', name: 'محاسبة ومالية', icon: Calculator, count: 70 },
-  { id: 'engineering', name: 'هندسة', icon: Wrench, count: 95 },
-  { id: 'education', name: 'تعليم وتدريب', icon: GraduationCap, count: 110 },
+export const CATEGORIES_DATA = [
+  { id: 'programming', name: 'برمجة وتطوير', icon: Code, keywords: ['برمج', 'مطور', 'software', 'developer', 'it', 'تقني', 'ويب', 'تطبيق'] },
+  { id: 'design', name: 'تصميم جرافيك', icon: PenTool, keywords: ['تصميم', 'جرافيك', 'مصمم', 'designer', 'graphic', 'ui', 'ux'] },
+  { id: 'marketing', name: 'تسويق ومبيعات', icon: Megaphone, keywords: ['تسويق', 'مبيعات', 'ماركتنج', 'marketing', 'sales', 'مندوب'] },
+  { id: 'management', name: 'إدارة أعمال', icon: Briefcase, keywords: ['إدارة', 'مدير', 'أعمال', 'management', 'manager', 'منسق', 'coordinator'] },
+  { id: 'medical', name: 'طب وصحة', icon: Stethoscope, keywords: ['طب', 'صحة', 'طبيب', 'ممرض', 'صيدلي', 'medical', 'health', 'doctor', 'nurse'] },
+  { id: 'accounting', name: 'محاسبة ومالية', icon: Calculator, keywords: ['محاسب', 'مالي', 'accounting', 'finance', 'accountant'] },
+  { id: 'engineering', name: 'هندسة', icon: Wrench, keywords: ['مهندس', 'هندس', 'engineer', 'engineering'] },
+  { id: 'education', name: 'تعليم وتدريب', icon: GraduationCap, keywords: ['تعليم', 'تدريب', 'مدرس', 'معلم', 'education', 'teacher', 'trainer'] },
+  { id: 'ngo', name: 'منظمات إنسانية', icon: Globe, keywords: ['منظمة', 'ngo', 'إنساني', 'إغاثة', 'un', 'undp', 'unicef', 'ميداني'] },
+  { id: 'writing', name: 'كتابة وترجمة', icon: FileText, keywords: ['كتابة', 'ترجمة', 'مترجم', 'كاتب', 'محتوى', 'translator', 'writer', 'content'] },
 ];
 
 export default function Categories() {
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchAndCountJobs() {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'jobs'));
+        const jobs = querySnapshot.docs.map(doc => doc.data());
+        
+        const newCounts: Record<string, number> = {};
+        
+        // Initialize counts to 0
+        CATEGORIES_DATA.forEach(cat => {
+          newCounts[cat.id] = 0;
+        });
+
+        // Count jobs for each category based on keywords
+        jobs.forEach(job => {
+          const searchableText = `${job.title || ''} ${job.description || ''} ${(job.tags || []).join(' ')}`.toLowerCase();
+          
+          CATEGORIES_DATA.forEach(category => {
+            const matches = category.keywords.some(keyword => searchableText.includes(keyword.toLowerCase()));
+            if (matches) {
+              newCounts[category.id]++;
+            }
+          });
+        });
+
+        setCounts(newCounts);
+      } catch (error) {
+        console.error("Error fetching jobs for categories:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchAndCountJobs();
+  }, []);
+
   return (
     <>
       <Helmet>
@@ -30,8 +74,10 @@ export default function Categories() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {categories.map((category) => {
+          {CATEGORIES_DATA.map((category) => {
             const Icon = category.icon;
+            const count = counts[category.id] || 0;
+            
             return (
               <Link
                 key={category.id}
@@ -42,7 +88,13 @@ export default function Categories() {
                   <Icon className="w-8 h-8" />
                 </div>
                 <h3 className="text-lg font-bold text-gray-900 mb-2">{category.name}</h3>
-                <p className="text-gray-500 text-sm">{category.count} وظيفة متاحة</p>
+                <p className="text-gray-500 text-sm">
+                  {loading ? (
+                    <span className="inline-block w-8 h-4 bg-gray-200 animate-pulse rounded"></span>
+                  ) : (
+                    <>{count}</>
+                  )} وظيفة متاحة
+                </p>
               </Link>
             );
           })}
