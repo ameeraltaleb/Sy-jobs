@@ -283,21 +283,9 @@ export default function Home() {
           </div>
 
           {loading ? (
-            <div className="space-y-4">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 animate-pulse">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="h-6 bg-gray-200 rounded-md w-1/2"></div>
-                    <div className="h-8 bg-gray-100 rounded-lg w-24"></div>
-                  </div>
-                  <div className="flex gap-3 mb-4">
-                    <div className="h-5 bg-gray-100 rounded w-20"></div>
-                    <div className="h-5 bg-gray-100 rounded w-20"></div>
-                  </div>
-                  <div className="h-4 bg-gray-100 rounded w-full mb-2"></div>
-                  <div className="h-4 bg-gray-100 rounded w-3/4"></div>
-                </div>
-              ))}
+            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm">
+              <div className="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+              <p className="text-gray-500 font-medium">جاري تحميل الوظائف...</p>
             </div>
           ) : currentJobs.length > 0 ? (
             <div className="space-y-5">
