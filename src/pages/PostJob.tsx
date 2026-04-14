@@ -7,7 +7,11 @@ export default function PostJob() {
     <>
       <Helmet>
         <title>نشر وظيفة | فرص عمل سوريا</title>
-        <meta name="description" content="خدمة نشر الوظائف ستكون متاحة قريباً." />
+        <meta name="description" content="انشر وظيفتك الشاغرة على منصة فرص عمل سوريا لتصل إلى آلاف الباحثين عن عمل في مختلف المحافظات السورية." />
+        <link rel="canonical" href="https://syriajobs.net/post-job" />
+        <meta property="og:title" content="نشر وظيفة | فرص عمل سوريا" />
+        <meta property="og:description" content="انشر وظيفتك الشاغرة على منصة فرص عمل سوريا لتصل إلى آلاف الباحثين عن عمل في مختلف المحافظات السورية." />
+        <meta property="og:url" content="https://syriajobs.net/post-job" />
       </Helmet>
 
       <div className="max-w-2xl mx-auto mt-12 bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">

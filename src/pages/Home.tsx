@@ -181,6 +181,11 @@ export default function Home() {
       <Helmet>
         <title>فرص عمل سوريا | أحدث الوظائف الشاغرة</title>
         <meta name="description" content="ابحث عن أحدث فرص العمل والوظائف الشاغرة في سوريا. تصفح آلاف الوظائف في دمشق، حلب، اللاذقية، حمص وغيرها من المحافظات." />
+        <link rel="canonical" href="https://syriajobs.net/" />
+        <meta property="og:title" content="فرص عمل سوريا | أحدث الوظائف الشاغرة" />
+        <meta property="og:description" content="ابحث عن أحدث فرص العمل والوظائف الشاغرة في سوريا. تصفح آلاف الوظائف في دمشق، حلب، اللاذقية، حمص وغيرها من المحافظات." />
+        <meta property="og:url" content="https://syriajobs.net/" />
+        <meta property="og:type" content="website" />
       </Helmet>
 
       {/* Hero Section */}

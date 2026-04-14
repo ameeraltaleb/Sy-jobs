@@ -62,7 +62,11 @@ export default function Categories() {
     <>
       <Helmet>
         <title>تصنيفات الوظائف | فرص عمل سوريا</title>
-        <meta name="description" content="تصفح الوظائف الشاغرة في سوريا حسب المجال والتصنيف." />
+        <meta name="description" content="تصفح الوظائف الشاغرة في سوريا حسب المجال والتصنيف. ابحث في البرمجة، التصميم، التسويق، الإدارة، الطب، الهندسة، وغيرها." />
+        <link rel="canonical" href="https://syriajobs.net/categories" />
+        <meta property="og:title" content="تصنيفات الوظائف | فرص عمل سوريا" />
+        <meta property="og:description" content="تصفح الوظائف الشاغرة في سوريا حسب المجال والتصنيف. ابحث في البرمجة، التصميم، التسويق، الإدارة، الطب، الهندسة، وغيرها." />
+        <meta property="og:url" content="https://syriajobs.net/categories" />
       </Helmet>
       
       <div className="max-w-6xl mx-auto">

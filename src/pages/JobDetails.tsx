@@ -153,6 +153,11 @@ export default function JobDetails() {
       <Helmet>
         <title>{`${job.title} في ${job.company} - فرص عمل سوريا`}</title>
         <meta name="description" content={`مطلوب ${job.title} للعمل في ${job.company} في ${job.location}. اقرأ التفاصيل وقدم الآن.`} />
+        <link rel="canonical" href={`https://syriajobs.net/job/${job.slug}`} />
+        <meta property="og:title" content={`${job.title} في ${job.company} - فرص عمل سوريا`} />
+        <meta property="og:description" content={`مطلوب ${job.title} للعمل في ${job.company} في ${job.location}. اقرأ التفاصيل وقدم الآن.`} />
+        <meta property="og:url" content={`https://syriajobs.net/job/${job.slug}`} />
+        <meta property="og:type" content="article" />
         <script type="application/ld+json">
           {JSON.stringify(structuredData)}
         </script>

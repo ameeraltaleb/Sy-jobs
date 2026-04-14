@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://syrian-jobs.com/sitemap.xml
+Sitemap: https://syriajobs.net/sitemap.xml

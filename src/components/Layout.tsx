@@ -20,20 +20,20 @@ export default function Layout() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 font-sans text-gray-900">
       {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-50 border-b border-gray-100">
+      <header className="bg-white shadow-sm sticky top-0 z-50 border-b border-gray-100" role="banner">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20">
             <div className="flex items-center">
-              <Link to="/" className="flex items-center gap-3 group">
+              <Link to="/" className="flex items-center gap-3 group" aria-label="الرئيسية - فرص عمل سوريا">
                 <div className="bg-blue-600 p-2 rounded-xl group-hover:bg-blue-700 transition-colors shadow-sm">
-                  <Briefcase className="h-6 w-6 text-white" />
+                  <Briefcase className="h-6 w-6 text-white" aria-hidden="true" />
                 </div>
                 <span className="text-2xl font-extrabold text-gray-900 tracking-tight">فرص عمل سوريا</span>
               </Link>
             </div>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-8">
+            <nav className="hidden md:flex items-center gap-8" aria-label="التنقل الرئيسي">
               {navLinks.map((link) => {
                 const isActive = location.pathname === link.path;
                 return (
@@ -43,6 +43,7 @@ export default function Layout() {
                     className={`font-bold transition-colors flex items-center gap-2 ${
                       isActive ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'
                     }`}
+                    aria-current={isActive ? 'page' : undefined}
                   >
                     {link.name}
                   </Link>
@@ -51,11 +52,11 @@ export default function Layout() {
             </nav>
 
             <div className="hidden md:flex items-center gap-4">
-              <button className="p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all">
-                <Search className="h-5 w-5" />
+              <button className="p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all" aria-label="بحث">
+                <Search className="h-5 w-5" aria-hidden="true" />
               </button>
-              <button className="p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all relative">
-                <Bell className="h-5 w-5" />
+              <button className="p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all relative" aria-label="الإشعارات">
+                <Bell className="h-5 w-5" aria-hidden="true" />
                 <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
               </button>
               <Link to="/post-job" className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 ml-2">
@@ -65,18 +66,20 @@ export default function Layout() {
 
             {/* Mobile menu button & icons */}
             <div className="flex items-center gap-1 md:hidden">
-              <button className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all">
-                <Search className="h-5 w-5" />
+              <button className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all" aria-label="بحث">
+                <Search className="h-5 w-5" aria-hidden="true" />
               </button>
-              <button className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all relative">
-                <Bell className="h-5 w-5" />
+              <button className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all relative" aria-label="الإشعارات">
+                <Bell className="h-5 w-5" aria-hidden="true" />
                 <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
               </button>
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="p-2 ml-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                aria-expanded={isMenuOpen}
+                aria-label="القائمة الرئيسية"
               >
-                {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                {isMenuOpen ? <X className="h-6 w-6" aria-hidden="true" /> : <Menu className="h-6 w-6" aria-hidden="true" />}
               </button>
             </div>
           </div>
@@ -84,7 +87,7 @@ export default function Layout() {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="md:hidden border-t border-gray-100 bg-white absolute w-full shadow-xl">
+          <nav className="md:hidden border-t border-gray-100 bg-white absolute w-full shadow-xl" aria-label="التنقل للجوال">
             <div className="px-4 pt-4 pb-6 space-y-2">
               {navLinks.map((link) => {
                 const isActive = location.pathname === link.path;
@@ -95,6 +98,7 @@ export default function Layout() {
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors ${
                       isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
                     }`}
+                    aria-current={isActive ? 'page' : undefined}
                   >
                     {link.icon}
                     {link.name}
@@ -107,17 +111,17 @@ export default function Layout() {
                 </Link>
               </div>
             </div>
-          </div>
+          </nav>
         )}
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12" role="main">
         <Outlet />
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-auto">
+      <footer className="bg-white border-t border-gray-200 mt-auto" role="contentinfo">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8">
             <div className="col-span-1 md:col-span-2">
