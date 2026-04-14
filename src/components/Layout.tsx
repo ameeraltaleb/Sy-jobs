@@ -140,6 +140,7 @@ export default function Layout() {
               <h3 className="text-sm font-bold text-gray-900 tracking-wider uppercase mb-6">روابط سريعة</h3>
               <ul className="space-y-4">
                 <li><Link to="/about" className="text-gray-500 hover:text-blue-600 font-medium transition-colors">من نحن</Link></li>
+                <li><Link to="/guide" className="text-gray-500 hover:text-blue-600 font-medium transition-colors">دليل التوظيف</Link></li>
                 <li><Link to="/contact" className="text-gray-500 hover:text-blue-600 font-medium transition-colors">اتصل بنا</Link></li>
                 <li><Link to="/categories" className="text-gray-500 hover:text-blue-600 font-medium transition-colors">تصفح الوظائف</Link></li>
               </ul>

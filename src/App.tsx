@@ -17,6 +17,7 @@ const Contact = lazy(() => import('./pages/Contact'));
 const Categories = lazy(() => import('./pages/Categories'));
 const Saved = lazy(() => import('./pages/Saved'));
 const PostJob = lazy(() => import('./pages/PostJob'));
+const JobSeekerGuide = lazy(() => import('./pages/JobSeekerGuide'));
 
 // A simple loading fallback
 const PageLoader = () => (
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="categories" element={<Categories />} />
           <Route path="saved" element={<Saved />} />
           <Route path="about" element={<About />} />
+          <Route path="guide" element={<JobSeekerGuide />} />
           <Route path="privacy" element={<Privacy />} />
           <Route path="terms" element={<Terms />} />
           <Route path="contact" element={<Contact />} />
