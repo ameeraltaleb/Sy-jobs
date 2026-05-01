@@ -1,21 +1,61 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Briefcase, Search, Bell, Bookmark, Menu, X, Home, Grid, Bookmark as BookmarkIcon } from 'lucide-react';
+import { Briefcase, Search, Bell, Menu, X, Home, Grid, Bookmark as BookmarkIcon, Settings, LogOut, User } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { auth, db } from '../../firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+
+const ADMIN_EMAILS = ['ameeraltaleb@gmail.com'];
 
 export default function Layout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [siteName, setSiteName] = useState('فرص عمل سوريا');
   const location = useLocation();
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, 'settings', 'general'));
+        if (docSnap.exists()) {
+          setSiteName(docSnap.data().siteName || 'فرص عمل سوريا');
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+      }
+    };
+    fetchSettings();
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setIsAdmin(user ? ADMIN_EMAILS.includes(user.email || '') : false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Close mobile menu when route changes
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location.pathname]);
 
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   const navLinks = [
     { name: 'الرئيسية', path: '/', icon: <Home className="w-5 h-5" /> },
     { name: 'التصنيفات', path: '/categories', icon: <Grid className="w-5 h-5" /> },
     { name: 'المحفوظات', path: '/saved', icon: <BookmarkIcon className="w-5 h-5" /> },
   ];
+
+  if (isAdmin) {
+    navLinks.push({ name: 'لوحة التحكم', path: '/admin', icon: <Settings className="w-5 h-5" /> });
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 font-sans text-gray-900">
@@ -28,7 +68,7 @@ export default function Layout() {
                 <div className="bg-blue-600 p-2 rounded-xl group-hover:bg-blue-700 transition-colors shadow-sm">
                   <Briefcase className="h-6 w-6 text-white" aria-hidden="true" />
                 </div>
-                <span className="text-2xl font-extrabold text-gray-900 tracking-tight">فرص عمل سوريا</span>
+                <span className="text-2xl font-extrabold text-gray-900 tracking-tight">{siteName}</span>
               </Link>
             </div>
 
@@ -55,10 +95,32 @@ export default function Layout() {
               <button className="p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all" aria-label="بحث">
                 <Search className="h-5 w-5" aria-hidden="true" />
               </button>
-              <button className="p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all relative" aria-label="الإشعارات">
-                <Bell className="h-5 w-5" aria-hidden="true" />
-                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-              </button>
+              
+              {user ? (
+                <div className="flex items-center gap-3 pr-4 border-r border-gray-100 mr-2">
+                  <div className="flex flex-col items-end">
+                    <span className="text-sm font-bold text-gray-900 truncate max-w-[120px]">{user.displayName || 'مستخدم'}</span>
+                    <button 
+                      onClick={handleSignOut}
+                      className="text-[10px] font-bold text-red-500 hover:text-red-600 uppercase tracking-wider"
+                    >
+                      تسجيل الخروج
+                    </button>
+                  </div>
+                  {user.photoURL ? (
+                    <img src={user.photoURL} alt={user.displayName || ''} className="w-9 h-9 rounded-full border border-gray-100 shadow-sm" />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                      {user.displayName?.[0] || 'U'}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link to="/login" className="p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all" aria-label="تسجيل الدخول">
+                  <User className="h-5 w-5" />
+                </Link>
+              )}
+
               <Link to="/post-job" className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 ml-2">
                 نشر وظيفة
               </Link>
@@ -88,7 +150,27 @@ export default function Layout() {
         {/* Mobile Navigation */}
         {isMenuOpen && (
           <nav className="md:hidden border-t border-gray-100 bg-white absolute w-full shadow-xl" aria-label="التنقل للجوال">
-            <div className="px-4 pt-4 pb-6 space-y-2">
+            <div className="px-4 py-6 space-y-2">
+              {user && (
+                <div className="flex items-center gap-3 px-4 pb-6 mb-2 border-b border-gray-100">
+                  {user.photoURL ? (
+                    <img src={user.photoURL} alt={user.displayName || ''} className="w-12 h-12 rounded-full border border-gray-100" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-extrabold text-xl">
+                      {user.displayName?.[0] || 'U'}
+                    </div>
+                  )}
+                  <div className="flex flex-col">
+                    <span className="font-bold text-gray-900">{user.displayName || 'مستخدم'}</span>
+                    <button 
+                      onClick={handleSignOut}
+                      className="text-xs font-bold text-red-500 text-right"
+                    >
+                      تسجيل الخروج
+                    </button>
+                  </div>
+                </div>
+              )}
               {navLinks.map((link) => {
                 const isActive = location.pathname === link.path;
                 return (
@@ -105,6 +187,15 @@ export default function Layout() {
                   </Link>
                 );
               })}
+              {!user && (
+                <Link 
+                  to="/login" 
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <User className="w-5 h-5" />
+                  تسجيل الدخول
+                </Link>
+              )}
               <div className="pt-4 mt-2 border-t border-gray-100">
                 <Link to="/post-job" className="flex items-center justify-center w-full bg-blue-600 text-white px-4 py-3.5 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-md">
                   نشر وظيفة جديدة
@@ -129,7 +220,7 @@ export default function Layout() {
                 <div className="bg-blue-600 p-2 rounded-xl group-hover:bg-blue-700 transition-colors">
                   <Briefcase className="h-6 w-6 text-white" />
                 </div>
-                <span className="text-2xl font-extrabold text-gray-900 tracking-tight">فرص عمل سوريا</span>
+                <span className="text-2xl font-extrabold text-gray-900 tracking-tight">{siteName}</span>
               </Link>
               <p className="text-gray-500 mb-6 max-w-md leading-relaxed text-lg">
                 المنصة الأولى لتجميع ونشر فرص العمل في سوريا. نهدف إلى ربط الكفاءات السورية بأفضل الفرص المتاحة في السوق المحلي وعن بعد.
@@ -157,7 +248,7 @@ export default function Layout() {
           
           <div className="mt-16 pt-8 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-gray-500 font-medium">
-              &copy; {new Date().getFullYear()} فرص عمل سوريا. جميع الحقوق محفوظة.
+              &copy; {new Date().getFullYear()} {siteName}. جميع الحقوق محفوظة.
             </p>
           </div>
         </div>

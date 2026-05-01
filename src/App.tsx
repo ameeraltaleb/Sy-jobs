@@ -18,6 +18,9 @@ const Categories = lazy(() => import('./pages/Categories'));
 const Saved = lazy(() => import('./pages/Saved'));
 const PostJob = lazy(() => import('./pages/PostJob'));
 const JobSeekerGuide = lazy(() => import('./pages/JobSeekerGuide'));
+const Login = lazy(() => import('./pages/Login'));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const EditJob = lazy(() => import('./pages/admin/EditJob'));
 
 // A simple loading fallback
 const PageLoader = () => (
@@ -41,6 +44,9 @@ export default function App() {
           <Route path="terms" element={<Terms />} />
           <Route path="contact" element={<Contact />} />
           <Route path="post-job" element={<PostJob />} />
+          <Route path="login" element={<Login />} />
+          <Route path="admin" element={<AdminDashboard />} />
+          <Route path="admin/edit-job/:id" element={<EditJob />} />
         </Route>
       </Routes>
     </Suspense>

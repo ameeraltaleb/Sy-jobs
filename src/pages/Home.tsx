@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useSearchParams } from 'react-router-dom';
-import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, limit, getDoc, doc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { MapPin, Clock, Building, ChevronLeft, Search as SearchIcon, Filter, X, Briefcase } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -29,6 +29,26 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState(1);
   const JOBS_PER_PAGE = 10;
   
+  const [siteSettings, setSiteSettings] = useState({
+    siteName: 'فرص عمل سوريا',
+    heroTitle: 'اكتشف فرصتك القادمة في سوريا',
+    heroSubtitle: 'نجمع لك أفضل الوظائف من مختلف المصادر والشركات في مكان واحد، لنسهل عليك رحلة البحث عن عمل.'
+  });
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, 'settings', 'general'));
+        if (docSnap.exists()) {
+          setSiteSettings(prev => ({ ...prev, ...docSnap.data() }));
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+      }
+    };
+    fetchSettings();
+  }, []);
+
   // URL Params
   const urlSearchTerm = searchParams.get('q') || '';
   const selectedLocation = searchParams.get('location') || '';
@@ -179,11 +199,11 @@ export default function Home() {
   return (
     <>
       <Helmet>
-        <title>فرص عمل سوريا | أحدث الوظائف الشاغرة</title>
-        <meta name="description" content="ابحث عن أحدث فرص العمل والوظائف الشاغرة في سوريا. تصفح آلاف الوظائف في دمشق، حلب، اللاذقية، حمص وغيرها من المحافظات." />
+        <title>{siteSettings.siteName} | أحدث الوظائف الشاغرة</title>
+        <meta name="description" content={`ابحث عن أحدث فرص العمل والوظائف الشاغرة في ${siteSettings.siteName}. تصفح آلاف الوظائف في دمشق، حلب، اللاذقية، حمص وغيرها.`} />
         <link rel="canonical" href="https://syriajobs.net/" />
-        <meta property="og:title" content="فرص عمل سوريا | أحدث الوظائف الشاغرة" />
-        <meta property="og:description" content="ابحث عن أحدث فرص العمل والوظائف الشاغرة في سوريا. تصفح آلاف الوظائف في دمشق، حلب، اللاذقية، حمص وغيرها من المحافظات." />
+        <meta property="og:title" content={`${siteSettings.siteName} | أحدث الوظائف الشاغرة`} />
+        <meta property="og:description" content={`ابحث عن أحدث فرص العمل والوظائف الشاغرة في ${siteSettings.siteName}.`} />
         <meta property="og:url" content="https://syriajobs.net/" />
         <meta property="og:type" content="website" />
       </Helmet>
@@ -198,10 +218,10 @@ export default function Home() {
 
         <div className="relative z-10">
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold mb-4 leading-tight tracking-tight">
-            اكتشف فرصتك القادمة في سوريا
+            {siteSettings.heroTitle}
           </h1>
           <p className="text-blue-100 text-base md:text-lg mb-8 max-w-2xl mx-auto font-medium leading-relaxed">
-            نجمع لك أفضل الوظائف من مختلف المصادر والشركات في مكان واحد، لنسهل عليك رحلة البحث عن عمل.
+            {siteSettings.heroSubtitle}
           </p>
           
           {/* Search Bar */}

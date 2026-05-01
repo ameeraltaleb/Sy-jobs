@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { db, auth } from '../../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { Save, ArrowRight, AlertCircle, CheckCircle2, PlusCircle } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { db, auth } from '../../../firebase';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { Save, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 
 const ADMIN_EMAILS = ['ameeraltaleb@gmail.com'];
 
-export default function PostJob() {
+export default function EditJob() {
+  const { id } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -31,17 +32,49 @@ export default function PostJob() {
   });
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user && ADMIN_EMAILS.includes(user.email || '')) {
         setIsAdmin(true);
+        if (id) fetchJob(id);
       } else {
         setIsAdmin(false);
+        setLoading(false);
+        if (user) navigate('/');
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [id, navigate]);
+
+  const fetchJob = async (jobId: string) => {
+    try {
+      const docSnap = await getDoc(doc(db, 'jobs', jobId));
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setFormData({
+          title: data.title || '',
+          company: data.company || '',
+          location: data.location || '',
+          type: data.type || 'Full-time',
+          category: data.category || 'Other',
+          description: data.description || '',
+          requirements: Array.isArray(data.requirements) ? data.requirements.join('\n') : (data.requirements || ''),
+          applicationUrl: data.applicationUrl || '',
+          salary: data.salary || '',
+          experience: data.experience || '',
+          deadline: data.deadline || '',
+          status: data.status || 'active'
+        });
+      } else {
+        setError('الوظيفة غير موجودة');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('فشل في تحميل بيانات الوظيفة');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -49,35 +82,25 @@ export default function PostJob() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isAdmin) return;
+    if (!id) return;
     
     setSubmitting(true);
     setError(null);
     setSuccess(false);
 
     try {
-      // Create slug from title
-      const slug = formData.title.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '') + '-' + Math.random().toString(36).substring(2, 7);
-
-      const jobData = {
+      const updatedData = {
         ...formData,
-        slug,
         requirements: formData.requirements.split('\n').filter(r => r.trim() !== ''),
-        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
       
-      await addDoc(collection(db, 'jobs'), jobData);
+      await updateDoc(doc(db, 'jobs', id), updatedData);
       setSuccess(true);
-      setFormData({
-        title: '', company: '', location: '', type: 'Full-time', category: 'Other',
-        description: '', requirements: '', applicationUrl: '', salary: '',
-        experience: '', deadline: '', status: 'active'
-      });
       setTimeout(() => navigate('/admin'), 2000);
     } catch (err) {
       console.error(err);
-      setError('فشل إضافة الوظيفة. يرجى المحاولة مرة أخرى.');
+      setError('فشل تعديل الوظيفة. يرجى التأكد من الصلاحيات.');
     } finally {
       setSubmitting(false);
     }
@@ -91,46 +114,34 @@ export default function PostJob() {
     );
   }
 
-  if (!isAdmin) {
-    return (
-      <div className="max-w-2xl mx-auto mt-12 bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
-        <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-blue-50 text-blue-600 mb-6">
-          <PlusCircle className="w-12 h-12" />
-        </div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">نشر وظيفة</h1>
-        <p className="text-gray-600 mb-8 text-lg leading-relaxed">
-          خدمة نشر الوظائف للجمهور ستكون متاحة قريباً جداً.
-          <br />
-          نعمل حالياً على تطوير نظام آمن وسهل الاستخدام لأصحاب العمل.
-        </p>
-        <button onClick={() => navigate('/')} className="inline-flex items-center gap-2 bg-blue-600 text-white px-8 py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors">
-          العودة للرئيسية
-          <ArrowRight className="w-5 h-5" />
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <Helmet>
-        <title>إضافة وظيفة جديدة | فرص عمل سوريا</title>
+        <title>تعديل وظيفة | لوحة التحكم</title>
       </Helmet>
 
+      <button 
+        onClick={() => navigate('/admin')}
+        className="flex items-center gap-2 text-gray-500 hover:text-blue-600 mb-8 transition-colors font-bold"
+      >
+        <ArrowRight className="w-5 h-5" />
+        العودة للوحة التحكم
+      </button>
+
       <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">إضافة وظيفة جديدة للموقع</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-8">تعديل بيانات الوظيفة</h1>
 
         {error && (
-          <div className="mb-8 p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl flex items-center gap-3 font-bold">
+          <div className="mb-8 p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl flex items-center gap-3">
             <AlertCircle className="w-5 h-5" />
             <p>{error}</p>
           </div>
         )}
 
         {success && (
-          <div className="mb-8 p-4 bg-green-50 border border-green-100 text-green-600 rounded-2xl flex items-center gap-3 font-bold">
+          <div className="mb-8 p-4 bg-green-50 border border-green-100 text-green-600 rounded-2xl flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5" />
-            <p>تم إضافة الوظيفة بنجاح! سيتم توجيهك للوحة التحكم...</p>
+            <p>تم تحديث الوظيفة بنجاح! سيتم توجيهك للوحة التحكم...</p>
           </div>
         )}
 
@@ -142,7 +153,6 @@ export default function PostJob() {
                 type="text"
                 name="title"
                 required
-                placeholder="مثال: مبرمج ريأكت محترف"
                 value={formData.title}
                 onChange={handleChange}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -154,7 +164,6 @@ export default function PostJob() {
                 type="text"
                 name="company"
                 required
-                placeholder="اسم الشركة أو المنظمة"
                 value={formData.company}
                 onChange={handleChange}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -169,7 +178,6 @@ export default function PostJob() {
                 type="text"
                 name="location"
                 required
-                placeholder="دمشق، حلب، أو عن بعد"
                 value={formData.location}
                 onChange={handleChange}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -191,34 +199,26 @@ export default function PostJob() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">التصنيف</label>
+              <label className="block text-sm font-bold text-gray-700 mb-2">الحالة</label>
               <select
-                name="category"
-                value={formData.category}
+                name="status"
+                value={formData.status}
                 onChange={handleChange}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="Technology">التكنولوجيا والبرمجة</option>
-                <option value="Design">التصميم والإبداع</option>
-                <option value="Marketing">التسويق والمبيعات</option>
-                <option value="Finance">المحاسبة والمالية</option>
-                <option value="Management">الإدارة والسكرتارية</option>
-                <option value="Health">الطب والتمريض</option>
-                <option value="Engineering">الهندسة</option>
-                <option value="Education">التعليم والتدريب</option>
-                <option value="NGOs">المنظمات والعمل الإنساني</option>
-                <option value="Other">تصنيفات أخرى</option>
+                <option value="active">نشطة</option>
+                <option value="pending">معلقة</option>
+                <option value="closed">مغلقة</option>
               </select>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">وصف الوظيفة والمهام</label>
+            <label className="block text-sm font-bold text-gray-700 mb-2">الوصف</label>
             <textarea
               name="description"
               required
-              rows={6}
-              placeholder="اكتب تفاصيل الوظيفة هنا..."
+              rows={5}
               value={formData.description}
               onChange={handleChange}
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -226,13 +226,10 @@ export default function PostJob() {
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">الشروط والمتطلبات (كل سطر متطلب جديد)</label>
+            <label className="block text-sm font-bold text-gray-700 mb-2">المتطلبات (كل متطلب في سطر منفصل)</label>
             <textarea
               name="requirements"
               rows={5}
-              placeholder="مثال:
-خبرة سنتين في المجال
-إتقان اللغة الإنجليزية"
               value={formData.requirements}
               onChange={handleChange}
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -245,20 +242,19 @@ export default function PostJob() {
               <input
                 type="text"
                 name="applicationUrl"
-                placeholder="رابط التقديم أو بريد إرسال السير الذاتية"
                 value={formData.applicationUrl}
                 onChange={handleChange}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">الموعد النهائي للتقديم</label>
+              <label className="block text-sm font-bold text-gray-700 mb-2">الموعد النهائي</label>
               <input
                 type="text"
                 name="deadline"
-                placeholder="مثال: 30 حزيران 2024"
                 value={formData.deadline}
                 onChange={handleChange}
+                placeholder="مثال: 30 أيار 2024"
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -273,8 +269,8 @@ export default function PostJob() {
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
               <>
-                <PlusCircle className="w-6 h-6" />
-                إضافة ونشر الوظيفة
+                <Save className="w-5 h-5" />
+                حفظ التعديلات
               </>
             )}
           </button>
@@ -283,4 +279,3 @@ export default function PostJob() {
     </div>
   );
 }
-
