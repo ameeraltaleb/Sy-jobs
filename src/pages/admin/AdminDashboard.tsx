@@ -151,9 +151,14 @@ export default function AdminDashboard() {
       <div className="text-center py-20 px-4">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">غير مصرح لك بالدخول</h1>
         <p className="text-gray-500 mb-8">يجب أن تكون مديراً للوصول إلى هذه الصفحة.</p>
-        <Link to="/" className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all">
-          العودة للرئيسية
-        </Link>
+        <div className="flex gap-4 justify-center">
+          <Link to="/login" className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all">
+            تسجيل الدخول
+          </Link>
+          <Link to="/" className="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-bold hover:bg-gray-200 transition-all">
+            العودة للرئيسية
+          </Link>
+        </div>
       </div>
     );
   }
