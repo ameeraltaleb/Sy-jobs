@@ -125,23 +125,12 @@ async function startServer() {
 
   // Schedule scraping job (runs every hour)
   cron.schedule('0 * * * *', async () => {
-    console.log('Running scheduled job scraping...');
-    try {
-      await scrapeJobs();
-    } catch (error) {
-      console.error('Scheduled scraping failed:', error);
-    }
+    console.log('Automated background scraping triggered via cron.');
+    console.log('No backend database writes configured. Please use the "Scrape Jobs" button in the admin dashboard to run scraping manually and save to Firestore.');
   });
 
-  // Run once on startup for demonstration purposes
-  setTimeout(async () => {
-    console.log('Running initial job scraping on startup...');
-    try {
-      await scrapeJobs();
-    } catch (error) {
-      console.error('Initial scraping failed:', error);
-    }
-  }, 5000);
+  // Background scraping on startup is disabled to prevent unauthenticated database access
+  console.log('Server started. Use the frontend Admin Dashboard to run the job scraper.');
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {

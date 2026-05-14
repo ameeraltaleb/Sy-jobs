@@ -96,7 +96,7 @@ export default function Layout() {
                 <Search className="h-5 w-5" aria-hidden="true" />
               </button>
               
-              {user ? (
+              {user && (
                 <div className="flex items-center gap-3 pr-4 border-r border-gray-100 mr-2">
                   <div className="flex flex-col items-end">
                     <span className="text-sm font-bold text-gray-900 truncate max-w-[120px]">{user.displayName || 'مستخدم'}</span>
@@ -115,10 +115,6 @@ export default function Layout() {
                     </div>
                   )}
                 </div>
-              ) : (
-                <Link to="/login" className="p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all" aria-label="تسجيل الدخول">
-                  <User className="h-5 w-5" />
-                </Link>
               )}
 
               <Link to="/post-job" className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 ml-2">
@@ -187,15 +183,6 @@ export default function Layout() {
                   </Link>
                 );
               })}
-              {!user && (
-                <Link 
-                  to="/login" 
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  <User className="w-5 h-5" />
-                  تسجيل الدخول
-                </Link>
-              )}
               <div className="pt-4 mt-2 border-t border-gray-100">
                 <Link to="/post-job" className="flex items-center justify-center w-full bg-blue-600 text-white px-4 py-3.5 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-md">
                   نشر وظيفة جديدة

@@ -7,14 +7,16 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Allow public read access to jobs for SEO and general users
+    // Allow public read access to settings for site configuration
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.email == 'ameeraltaleb@gmail.com';
+    }
+
+    // Jobs collection hardening
     match /jobs/{jobId} {
       allow read: if true;
-      // Allow creation of jobs from the frontend, but prevent modifications or deletions
-      allow create: if request.resource.data.keys().hasAll(['title', 'company', 'location', 'type', 'description'])
-                    && request.resource.data.title is string
-                    && request.resource.data.description is string;
-      allow update, delete: if false; // Only admin (via Firebase Console or Admin SDK) can update/delete
+      allow create, update, delete: if request.auth != null && request.auth.token.email == 'ameeraltaleb@gmail.com';
     }
   }
 }

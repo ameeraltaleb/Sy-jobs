@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db, auth } from '../../../firebase';
-import { collection, query, getDocs, deleteDoc, doc, updateDoc, orderBy, setDoc, getDoc } from 'firebase/firestore';
+import { collection, query, getDocs, deleteDoc, doc, updateDoc, orderBy, setDoc, getDoc, addDoc } from 'firebase/firestore';
 import { Briefcase, Users, CheckCircle, Clock, Trash2, Edit, Plus, Search, ExternalLink, Filter, Settings as SettingsIcon, Layout as LayoutIcon, Save } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -11,11 +11,45 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'jobs' | 'settings'>('jobs');
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isScraping, setIsScraping] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [stats, setStats] = useState({ total: 0, active: 0, pending: 0 });
   const [searchTerm, setSearchTerm] = useState('');
   const [submittingSettings, setSubmittingSettings] = useState(false);
   const navigate = useNavigate();
+
+  const handleScrapeJobs = async () => {
+    if (!window.confirm('هل أنت متأكد من رغبتك في جلب وظائف جديدة عبر Scraping؟ قد يستغرق هذا بعض الوقت وعدة ثوانٍ.')) return;
+    setIsScraping(true);
+    try {
+      const res = await fetch('/api/scrape', { method: 'POST' });
+      const data = await res.json();
+      
+      if (!data.success) {
+        alert('فشل جلب الوظائف: ' + (data.error || 'خطأ غير معروف'));
+        return;
+      }
+      
+      if (!data.result || data.result.length === 0) {
+        alert('لم يتم العثور على وظائف جديدة ليتم إضافتها.');
+        return;
+      }
+      
+      let added = 0;
+      for (const job of data.result) {
+        await addDoc(collection(db, 'jobs'), job);
+        added++;
+      }
+      
+      alert(`تم بنجاح جلب وإضافة ${added} وظيفة جديدة!`);
+      fetchJobs();
+    } catch (e) {
+      console.error(e);
+      alert('حدث خطأ أثناء الاتصال بالخادم لجلب الوظائف.');
+    } finally {
+      setIsScraping(false);
+    }
+  };
 
   const [siteSettings, setSiteSettings] = useState({
     siteName: 'فرص عمل سوريا',
@@ -140,13 +174,27 @@ export default function AdminDashboard() {
           <h1 className="text-3xl font-extrabold text-gray-900">لوحة تحكم الإدارة</h1>
           <p className="text-gray-500 mt-1">إدارة الوظائف، المستخدمين، وإعدادات الموقع</p>
         </div>
-        <Link 
-          to="/post-job" 
-          className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
-        >
-          <Plus className="w-5 h-5" />
-          إضافة وظيفة جديدة
-        </Link>
+        <div className="flex gap-3">
+          <button 
+            onClick={handleScrapeJobs}
+            disabled={isScraping}
+            className="inline-flex items-center gap-2 bg-orange-100 text-orange-600 px-6 py-3 rounded-xl font-bold hover:bg-orange-200 transition-all shadow-sm disabled:opacity-50"
+          >
+            {isScraping ? (
+              <div className="w-5 h-5 border-2 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <Search className="w-5 h-5" />
+            )}
+            جلب وظائف (Scrape)
+          </button>
+          <Link 
+            to="/post-job" 
+            className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
+          >
+            <Plus className="w-5 h-5" />
+            إضافة وظيفة جديدة
+          </Link>
+        </div>
       </div>
 
       {/* Tab Navigation */}

@@ -33,7 +33,7 @@ async function scrapeUNJobs() {
     
     const $ = cheerio.load(response.data);
     $('.job').each((i, el) => {
-      if (jobs.length >= 10) return; // Limit to 10 to avoid quota issues
+      if (jobs.length >= 100) return; // Limit to 100 to avoid excessive quota usage
       const title = $(el).find('a.jtitle').text().trim();
       const link = $(el).find('a.jtitle').attr('href');
       const companyNode = $(el).find('br').first()[0]?.nextSibling;
@@ -68,7 +68,7 @@ async function scrapeTanqeeb() {
     
     // Find job links in Tanqeeb
     $('a[href*="/job/"]').each((i, el) => {
-      if (jobs.length >= 10) return; // Limit to 10
+      if (jobs.length >= 100) return; // Limit to 100
       
       const link = $(el).attr('href');
       const title = $(el).text().replace(/\s+/g, ' ').trim();
@@ -103,7 +103,7 @@ async function scrapeRemoteTanqeeb() {
     const $ = cheerio.load(response.data);
     
     $('a[href*="/job/"]').each((i, el) => {
-      if (jobs.length >= 10) return; // Limit to 10
+      if (jobs.length >= 100) return; // Limit to 100
       
       const link = $(el).attr('href');
       const title = $(el).text().replace(/\s+/g, ' ').trim();
@@ -132,7 +132,7 @@ async function scrapeRemotive() {
       const worldwideJobs = response.data.jobs.filter((job: any) => {
         const loc = (job.candidate_required_location || '').toLowerCase();
         return loc.includes('worldwide') || loc.includes('anywhere') || loc.includes('global');
-      }).slice(0, 5); // Limit to 5
+      }).slice(0, 50); // Limit to 50
       
       worldwideJobs.forEach((item: any) => {
         if (item.title && item.url) {
@@ -159,7 +159,7 @@ async function scrapeWeWorkRemotely() {
     const response = await axios.get('https://weworkremotely.com/remote-jobs.rss');
     const $ = cheerio.load(response.data, { xmlMode: true });
     $('item').each((i, el) => {
-      if (jobs.length >= 5) return; // Limit to 5
+      if (jobs.length >= 50) return; // Limit to 50
       const title = $(el).find('title').text();
       const link = $(el).find('link').text();
       const company = title.split(':')[0] || 'شركة عالمية';
@@ -190,7 +190,7 @@ async function scrapeRemoteOK() {
       // Skip the first item which is legal info
       const validJobs = response.data.slice(1).filter((j: any) => 
         j.location && (j.location.toLowerCase().includes('worldwide') || j.location.toLowerCase().includes('anywhere'))
-      ).slice(0, 5); // Limit to 5
+      ).slice(0, 50); // Limit to 50
       
       validJobs.forEach((item: any) => {
         if (item.position && item.url) {
@@ -224,7 +224,7 @@ async function scrapeTelegram() {
       const $ = cheerio.load(response.data);
       
       $('.tgme_widget_message').each((i, el) => {
-        if (jobs.length >= 5) return; // Limit to 5 per channel to avoid quota issues
+        if (jobs.length >= 25) return; // Limit to 25 per channel to avoid quota issues
         
         let htmlText = $(el).find('.tgme_widget_message_text').html() || '';
         htmlText = htmlText.replace(/<br\s*[\/]?>/gi, '\n');
@@ -261,7 +261,7 @@ async function scrapeNSJobs() {
     });
 
     if (response.data && response.data.data && Array.isArray(response.data.data.data)) {
-      const items = response.data.data.data.slice(0, 5); // Limit to 5
+      const items = response.data.data.data.slice(0, 50); // Limit to 50
       items.forEach((item: any) => {
         if (item.title && item.permanent_link) {
           jobs.push({
@@ -283,7 +283,7 @@ async function scrapeNSJobs() {
 
 export async function scrapeJobs() {
   console.log('Starting job processing pipeline...');
-  let addedCount = 0;
+  const formattedJobs: any[] = [];
   const jobsRef = collection(db, 'jobs');
 
   try {
@@ -449,15 +449,14 @@ export async function scrapeJobs() {
                 existingSignatures.add(signature);
 
                 const slug = generateSlug(jobData.title, jobData.company || 'وظيفة');
-                await addDoc(jobsRef, {
+                formattedJobs.push({
                   ...jobData,
                   sourceUrl: source.sourceUrl,
                   slug,
                   datePosted: new Date().toISOString(),
                   createdAt: new Date().toISOString()
                 });
-                addedCount++;
-                console.log(`Added: ${jobData.title}`);
+                console.log(`Prepared: ${jobData.title}`);
               }
               success = true;
             } catch (aiError: any) {
@@ -492,7 +491,7 @@ export async function scrapeJobs() {
           existingSignatures.add(signature);
 
           const slug = generateSlug(source.title, source.company || 'وظيفة');
-          await addDoc(jobsRef, {
+          formattedJobs.push({
             title: source.title,
             company: source.company || 'غير محدد',
             location: source.location || 'سوريا',
@@ -504,12 +503,11 @@ export async function scrapeJobs() {
             datePosted: new Date().toISOString(),
             createdAt: new Date().toISOString()
           });
-          addedCount++;
         }
       }));
     }
 
-    return { added: addedCount };
+    return formattedJobs;
   } catch (error) {
     console.error('Error in pipeline:', error);
     throw error;
